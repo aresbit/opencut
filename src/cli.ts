@@ -1,12 +1,9 @@
 import { Command } from "commander";
-import { VERSION } from "./index.js";
+import { VERSION } from "./index.ts";
 
 export function buildProgram(): Command {
   const program = new Command();
-  program
-    .name("pycut")
-    .description("AI-powered video clipping CLI")
-    .version(VERSION);
+  program.name("pycut").description("AI-powered video clipping CLI").version(VERSION);
   return program;
 }
 
@@ -15,11 +12,13 @@ async function main(argv: string[]): Promise<void> {
   await program.parseAsync(argv);
 }
 
-const invokedDirectly =
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith("/cli.js") === true;
+const entry = process.argv[1] ?? "";
+const isMain =
+  import.meta.url === `file://${entry}` ||
+  entry.endsWith("/cli.ts") ||
+  entry.endsWith("/cli.js");
 
-if (invokedDirectly) {
+if (isMain) {
   main(process.argv).catch((err) => {
     console.error(err instanceof Error ? err.message : err);
     process.exit(1);

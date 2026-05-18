@@ -12,8 +12,7 @@ wheels/
 # Git worktrees
 .worktrees/
 
-# Node
+# Node / Bun
 node_modules/
-.pnpm-store/
 *.tsbuildinfo
 
