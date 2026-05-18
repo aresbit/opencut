@@ -91,7 +91,7 @@ pycut input.mp4 \
 pycut input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://api.deepseek.com \
-  --model deepseek-chat
+  --model deepseek-v4-flash
 ```
 
 ## Quick start
