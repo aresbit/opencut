@@ -1,0 +1,21 @@
+export const DEFAULT_EN_ASR_MODEL = "large-v3-turbo";
+export const DEFAULT_CHINESE_ASR_MODEL = "large-v3-turbo";
+export const DEFAULT_FALLBACK_ASR_MODEL = "large-v3-turbo";
+
+export const DEFAULT_TRANSLATION_BACKEND = "google";
+
+export const DEFAULT_ORIGINAL_SUBTITLE_COLOR = "#FFFFFF";
+export const DEFAULT_TRANSLATION_SUBTITLE_COLOR = "#FFA500";
+export const DEFAULT_HIGHLIGHT_SUBTITLE_COLOR = "#FFFF00";
+
+export const DEFAULT_SEGMENT_DURATION = 300;
+export const DEFAULT_MAX_DURATION_SECONDS = 30;
+export const DEFAULT_MAX_CHARS = 30;
+export const DEFAULT_FIRST_SUBTITLE_DELAY = 1;
+export const DEFAULT_MAX_TITLE_CHARS = 6;
+export const DEFAULT_MAX_SUBTITLE_CHARS = 10;
+export const DEFAULT_MARGIN_LEFT_MS = -100;
+export const DEFAULT_MARGIN_RIGHT_MS = 150;
+
+export const DEFAULT_FCPXML_FRAME_RATE = 25;
+export const DEFAULT_FCPXML_SPEED = 1;
