@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+# coding=utf-8
+"""
+Video clipping CLI entry point.
+"""
+
+import os
+import argparse
+from pathlib import Path
+from typing import Dict
+
+import pycut.config as config
+from pycut.clipper import VideoClipper
+from pycut.utils import normalize_hex_color
+from pycut.video_io import (
+    _parse_output_formats, _expand_video_inputs,
+)
+
+
+def _resolve_default_asr_model(source_lang: str) -> str:
+    normalized = (source_lang or "").strip().lower()
+    if normalized.startswith("zh"):
+        return config.DEFAULT_CHINESE_ASR_MODEL
+    if normalized.startswith("en"):
+        return config.DEFAULT_EN_ASR_MODEL
+    return config.DEFAULT_FALLBACK_ASR_MODEL
+
+
+def _resolve_output_dir(video_path: str, explicit_output_dir: str | None) -> str:
+    if explicit_output_dir:
+        return explicit_output_dir
+
+    video = Path(video_path).resolve()
+    return str(video.parent / video.stem)
+
+
+def _parse_hex_color(value: str) -> str:
+    try:
+        return normalize_hex_color(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Video clipping with ASR, analysis, translation, and subtitles\n\n"
+            "Export OPENAI_API_KEY={your_api_key} or use --api-key to enable AI-based highlight extraction and keyword detection.\n"
+            "Use --base-url to point at any OpenAI-compatible API (Gemini, DeepSeek, Ollama, etc.).\n\n"
+            "Examples:\n"
+            "  VideoCut: pycut --translate --source-lang zh --target-lang en --max-chars 10 --no-clip --highlight --fcpxml-speed 1.1 --format fcpxml,txt ~/Movies/youtube/ \n"
+            "  Long2Short: pycut --translate --source-lang en --target-lang zh --max-chars 50 --format video --highlight --orientation portrait ~/Movies/youtube/"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("video_inputs", nargs="+", help="Video files, directories, or glob patterns")
+    parser.add_argument(
+        "--transcript",
+        default=None,
+        metavar="JSON_FILE",
+        help="Path to existing transcript JSON file (skips ASR transcription)"
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        default=None,
+        help="Output directory (default: create a sibling folder named after each input file stem)",
+    )
+    parser.add_argument(
+        "--asr-model",
+        default=None,
+        help=(
+            "ASR model path "
+            f"(default: en->{config.DEFAULT_EN_ASR_MODEL}, "
+            f"zh->{config.DEFAULT_CHINESE_ASR_MODEL}, "
+            f"other->{config.DEFAULT_FALLBACK_ASR_MODEL})"
+        ),
+    )
+    parser.add_argument(
+        "--aligner-model",
+        default=config.DEFAULT_ALIGNER_MODEL,
+        help=f"Aligner model path (default: {config.DEFAULT_ALIGNER_MODEL})",
+    )
+    parser.add_argument("--api-key", help="OpenAI-compatible API key (or set OPENAI_API_KEY env var)")
+    parser.add_argument("--base-url", default=None,
+                        help="Base URL for OpenAI-compatible API (default: https://api.openai.com/v1)")
+    parser.add_argument("--model", default=None,
+                        help="Model name for LLM analysis (default: gpt-4o-mini)")
+    # Legacy alias kept for backward compatibility
+    parser.add_argument("--gemini-api-key", help=argparse.SUPPRESS)
+    parser.add_argument("--segment-duration", type=int, default=300, help="Audio segment duration in seconds (default: 300)")
+    parser.add_argument("--max-duration", type=float, default=30.0, help="Maximum subtitle segment duration in seconds (default: 30.0)")
+    parser.add_argument("--max-chars", type=int, default=30, help="Maximum characters per subtitle segment (default: 30)")
+    parser.add_argument("--translate", action="store_true", help="Translate subtitles")
+    parser.add_argument("--source-lang", default="en", help="Source language code (default: en)")
+    parser.add_argument("--target-lang", default="en", help="Target language code (default: en)")
+    parser.add_argument("--orientation", choices=["landscape", "portrait"], default="landscape", help="Video orientation (default: landscape)")
+    parser.add_argument("--subtitle-position", choices=["original-top", "translated-top"], default="translated-top", help="Subtitle position: original-top (original above translated) or translated-top (default: translated-top)")
+    parser.add_argument(
+        "--original-subtitle-color",
+        type=_parse_hex_color,
+        default=config.DEFAULT_ORIGINAL_SUBTITLE_COLOR,
+        help=f"Original subtitle color in #RRGGBB format (default: {config.DEFAULT_ORIGINAL_SUBTITLE_COLOR})",
+    )
+    parser.add_argument(
+        "--translation-subtitle-color",
+        type=_parse_hex_color,
+        default=config.DEFAULT_TRANSLATION_SUBTITLE_COLOR,
+        help=f"Translation subtitle color in #RRGGBB format (default: {config.DEFAULT_TRANSLATION_SUBTITLE_COLOR})",
+    )
+    parser.add_argument(
+        "--highlight-subtitle-color",
+        type=_parse_hex_color,
+        default=config.DEFAULT_HIGHLIGHT_SUBTITLE_COLOR,
+        help=f"Highlight subtitle color in #RRGGBB format (default: {config.DEFAULT_HIGHLIGHT_SUBTITLE_COLOR})",
+    )
+    parser.add_argument("--first-subtitle-delay", type=float, default=1.0, help="Delay in seconds for first subtitle screen (useful for cover frame) (default: 1.0)")
+    parser.add_argument("--max-title-chars", type=int, default=6, help="Maximum characters for title (default: 6)")
+    parser.add_argument("--max-subtitle-chars", type=int, default=10, help="Maximum characters for subtitle (default: 10)")
+    parser.add_argument("--no-clip", dest="enable_clip", action="store_false",
+                        help="Disable AI highlight extraction; still split subtitles by transcript chunks")
+    parser.add_argument("--highlight", dest="enable_highlight", action="store_true",
+                        help="Enable AI keyword detection for subtitle highlighting in --no-clip mode (requires API key)")
+    parser.add_argument(
+        "--correct-words",
+        dest="correct_words",
+        action="store_true",
+        help="Use LLM to automatically correct ASR transcription errors and print a diff of changes (requires --api-key or OPENAI_API_KEY)",
+    )
+    parser.add_argument("--no-filter-empty-segments", dest="filter_empty_segments", action="store_false",
+                        help="Keep empty transcript segments in subtitle/FCPXML export")
+    parser.add_argument("--no-filter-fillers", dest="filter_fillers", action="store_false",
+                        help="Disable filler-word filtering (e.g., um/uh) before subtitle segmentation")
+    parser.add_argument("--margin-left", type=float, default=-100.0,
+                        help="Extend each subtitle segment start by this many milliseconds (default: -100ms)")
+    parser.add_argument("--margin-right", type=float, default=150.0,
+                        help="Extend each subtitle segment end by this many milliseconds (default: 150ms)")
+    parser.add_argument(
+        "--format",
+        default="srt",
+        help="Comma-separated output formats: ass,srt,fcpxml,video,txt (default: srt)",
+    )
+    parser.add_argument("--fcpxml-frame-rate", type=float, default=25.0,
+                        help="Frame rate for FCPXML export (default: 25.0)")
+    parser.add_argument("--fcpxml-speed", type=float, default=1.0,
+                        help="Timeline speed multiplier for FCPXML export (e.g. 1.1 = 1.1x) (default: 1.0)")
+
+    args = parser.parse_args()
+    try:
+        output_formats = _parse_output_formats(args.format)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    # Get API key: --api-key > --gemini-api-key > OPENAI_API_KEY > GEMINI_API_KEY
+    api_key = args.api_key or args.gemini_api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    print(f"🔑 Using API Key: {'Provided' if api_key else 'Not Provided'}")
+
+    # Initialize clipper
+    resolved_asr_model = args.asr_model or _resolve_default_asr_model(args.source_lang)
+
+    clipper = VideoClipper(
+        asr_model_path=resolved_asr_model,
+        aligner_model_path=args.aligner_model,
+        api_key=api_key,
+        base_url=args.base_url,
+        model=args.model,
+        segment_duration=args.segment_duration,
+        max_duration=args.max_duration,
+        max_chars=args.max_chars,
+        filter_fillers=args.filter_fillers,
+    )
+
+    input_videos = _expand_video_inputs(args.video_inputs)
+    if not input_videos:
+        parser.error("No valid video files found in inputs")
+
+    if args.transcript and len(input_videos) > 1:
+        parser.error("--transcript can only be used with a single video input")
+
+    all_results: Dict[str, Dict[str, str]] = {}
+    for idx, video_path in enumerate(input_videos, start=1):
+        print(f"\n▶️  [{idx}/{len(input_videos)}] {video_path}")
+        resolved_output_dir = _resolve_output_dir(video_path, args.output_dir)
+        all_results[video_path] = clipper.process_video(
+            video_path=video_path,
+            output_dir=resolved_output_dir,
+            translate=args.translate,
+            source_lang=args.source_lang,
+            target_lang=args.target_lang,
+            orientation=args.orientation,
+            subtitle_position=args.subtitle_position,
+            original_subtitle_color=args.original_subtitle_color,
+            translation_subtitle_color=args.translation_subtitle_color,
+            highlight_subtitle_color=args.highlight_subtitle_color,
+            first_subtitle_delay=args.first_subtitle_delay,
+            max_title_chars=args.max_title_chars,
+            max_subtitle_chars=args.max_subtitle_chars,
+            enable_clip=args.enable_clip,
+            enable_highlight=args.enable_highlight,
+            correct_words=args.correct_words,
+            filter_empty_segments=args.filter_empty_segments,
+            margin_left=args.margin_left / 1000.0,
+            margin_right=args.margin_right / 1000.0,
+            output_formats=output_formats,
+            fcpxml_frame_rate=args.fcpxml_frame_rate,
+            fcpxml_speed=args.fcpxml_speed,
+            transcript_json_path=args.transcript,
+        )
+
+    if len(input_videos) == 1:
+        return all_results[input_videos[0]]
+    return all_results
+
+
+if __name__ == "__main__":
+    main()
