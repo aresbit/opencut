@@ -49,6 +49,7 @@ class VideoClipper:
         self,
         asr_model_path: Optional[str] = config.DEFAULT_EN_ASR_MODEL,
         aligner_model_path: Optional[str] = config.DEFAULT_ALIGNER_MODEL,
+        enable_align: bool = True,
         gemini_api_key: Optional[str] = None,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
@@ -63,6 +64,7 @@ class VideoClipper:
         self.segment_duration = segment_duration
         self.asr_model_path = asr_model_path or config.DEFAULT_EN_ASR_MODEL
         self.aligner_model_path = aligner_model_path or config.DEFAULT_ALIGNER_MODEL
+        self.enable_align = enable_align
         self.translator = translator or GoogleTranslator()
         self.max_duration = max_duration
         self.max_chars = max_chars
@@ -71,6 +73,7 @@ class VideoClipper:
             asr_model_path=self.asr_model_path,
             aligner_model_path=self.aligner_model_path,
             filter_fillers=self.filter_fillers,
+            enable_align=self.enable_align,
         )
         
         backend_info = "MLX (Apple Silicon)"
@@ -99,6 +102,7 @@ class VideoClipper:
                 asr_model_path=getattr(self, "asr_model_path", config.DEFAULT_EN_ASR_MODEL),
                 aligner_model_path=getattr(self, "aligner_model_path", config.DEFAULT_ALIGNER_MODEL),
                 filter_fillers=getattr(self, "filter_fillers", True),
+                enable_align=getattr(self, "enable_align", True),
             )
             if hasattr(self, "asr_model"):
                 helper.asr_model = self.asr_model

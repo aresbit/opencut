@@ -81,6 +81,12 @@ def main():
         default=config.DEFAULT_ALIGNER_MODEL,
         help=f"Aligner model path (default: {config.DEFAULT_ALIGNER_MODEL})",
     )
+    parser.add_argument(
+        "--no-align",
+        dest="enable_align",
+        action="store_false",
+        help="Disable word alignment and fall back to segment-level timestamps",
+    )
     parser.add_argument("--api-key", help="OpenAI-compatible API key (or set OPENAI_API_KEY env var)")
     parser.add_argument("--base-url", default=None,
                         help="Base URL for OpenAI-compatible API (default: https://api.openai.com/v1)")
@@ -161,6 +167,7 @@ def main():
     clipper = VideoClipper(
         asr_model_path=resolved_asr_model,
         aligner_model_path=args.aligner_model,
+        enable_align=args.enable_align,
         api_key=api_key,
         base_url=args.base_url,
         model=args.model,

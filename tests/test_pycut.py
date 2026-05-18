@@ -150,11 +150,12 @@ def test_video_clipper_delegates_asr_loading_to_helper(monkeypatch):
     seen = {}
 
     class FakeASRHelper:
-        def __init__(self, *, asr_model_path, aligner_model_path, filter_fillers):
+        def __init__(self, *, asr_model_path, aligner_model_path, filter_fillers, enable_align):
             seen["init"] = {
                 "asr_model_path": asr_model_path,
                 "aligner_model_path": aligner_model_path,
                 "filter_fillers": filter_fillers,
+                "enable_align": enable_align,
             }
 
         def load_models(self):
@@ -169,7 +170,48 @@ def test_video_clipper_delegates_asr_loading_to_helper(monkeypatch):
 
     assert isinstance(vc.asr_helper, FakeASRHelper)
     assert seen["init"]["filter_fillers"] is True
+    assert seen["init"]["enable_align"] is True
     assert seen["load_models"] is True
+
+
+def test_mlx_asr_helper_skips_alignment_when_disabled(monkeypatch):
+    """Disabling align should skip aligner generation and fall back to a single timed segment."""
+    import pycut.asr as asr
+
+    calls = {"aligner_generate": 0}
+
+    class FakeASRModel:
+        def generate(self, audio_path, language="en"):
+            return types.SimpleNamespace(text="hello world")
+
+    class FakeAligner:
+        def generate(self, *args, **kwargs):
+            calls["aligner_generate"] += 1
+            return [types.SimpleNamespace(text="hello", start_time=0.0, end_time=0.5)]
+
+    helper = asr.MLXASRHelper(
+        asr_model_path="fake-asr",
+        aligner_model_path="fake-aligner",
+        filter_fillers=True,
+        enable_align=False,
+    )
+    helper.asr_model = FakeASRModel()
+    helper._mlx_aligner = FakeAligner()
+    monkeypatch.setattr(helper, "load_models", lambda: None)
+
+    segments = helper.transcribe_audio(
+        "fake.wav",
+        time_offset=1.25,
+        source_lang="en",
+        get_audio_duration=lambda _: 2.5,
+    )
+
+    assert calls["aligner_generate"] == 0
+    assert len(segments) == 1
+    assert segments[0].text == "hello world"
+    assert segments[0].start == 1.25
+    assert segments[0].end == 3.75
+    assert segments[0].words == []
 
 
 def test_video_clipper_signature_omits_legacy_backend_device_options():
@@ -1285,6 +1327,42 @@ def test_main_passes_enable_highlight_to_process_video(monkeypatch):
     assert calls.get("enable_clip") is False, f"enable_clip not False in calls: {calls}"
 
 
+def test_cli_passes_no_align_to_video_clipper(monkeypatch):
+    """CLI should disable alignment when --no-align is specified."""
+    import pycut.cli as cli_module
+    import pycut.config as config
+    import pycut.clipper as clipper_module
+
+    monkeypatch.setattr(config.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(config.platform, "machine", lambda: "arm64")
+
+    seen = {}
+
+    def fake_process_video(self, **kwargs):
+        seen["process_video"] = kwargs
+        return {}
+
+    class FakeVideoClipper:
+        def __init__(self, **kwargs):
+            seen["clipper_init"] = kwargs
+
+        process_video = fake_process_video
+
+    monkeypatch.setattr(cli_module, "VideoClipper", FakeVideoClipper)
+    monkeypatch.setattr(clipper_module, "VideoClipper", FakeVideoClipper)
+    monkeypatch.setattr(cli_module, "_expand_video_inputs", lambda inputs: ["/tmp/input.mov"])
+
+    monkeypatch.setattr(sys, "argv", [
+        "main.py",
+        "/tmp/input.mov",
+        "--no-align",
+    ])
+
+    cli_module.main()
+
+    assert seen["clipper_init"]["enable_align"] is False
+
+
 def test_cli_help_exposes_subtitle_color_defaults(monkeypatch, capsys):
     """CLI help should document subtitle color defaults for original/translation/highlight."""
     import pycut.cli as cli_module
@@ -1339,12 +1417,13 @@ def test_main_passes_subtitle_colors_to_process_video(monkeypatch):
 def test_cli_resolves_default_asr_model_from_source_language():
     """CLI should map source language families to the expected default ASR model."""
     import pycut.cli as cli_module
+    import pycut.config as config_module
 
-    assert cli_module._resolve_default_asr_model("en") == "mlx-community/parakeet-tdt-1.1b"
-    assert cli_module._resolve_default_asr_model("en-US") == "mlx-community/parakeet-tdt-1.1b"
-    assert cli_module._resolve_default_asr_model("zh") == "mlx-community/Qwen3-ASR-1.7B-bf16"
-    assert cli_module._resolve_default_asr_model("zh-CN") == "mlx-community/Qwen3-ASR-1.7B-bf16"
-    assert cli_module._resolve_default_asr_model("ja") == "mlx-community/whisper-large-v3-turbo"
+    assert cli_module._resolve_default_asr_model("en") == config_module.DEFAULT_EN_ASR_MODEL
+    assert cli_module._resolve_default_asr_model("en-US") == config_module.DEFAULT_EN_ASR_MODEL
+    assert cli_module._resolve_default_asr_model("zh") == config_module.DEFAULT_CHINESE_ASR_MODEL
+    assert cli_module._resolve_default_asr_model("zh-CN") == config_module.DEFAULT_CHINESE_ASR_MODEL
+    assert cli_module._resolve_default_asr_model("ja") == config_module.DEFAULT_FALLBACK_ASR_MODEL
 
 
 def test_cli_resolves_default_output_dir_from_source_stem():
@@ -1527,7 +1606,7 @@ def test_cli_help_mentions_dynamic_defaults():
     config_source = inspect.getsource(config_module)
 
     assert "video.parent / video.stem" in source
-    assert cli_module._resolve_default_asr_model("en") == "mlx-community/parakeet-tdt-1.1b"
+    assert cli_module._resolve_default_asr_model("en") == config_module.DEFAULT_EN_ASR_MODEL
     assert "Qwen3-ASR-1.7B-bf16" in config_source
     assert "whisper-large-v3-turbo" in config_source
 

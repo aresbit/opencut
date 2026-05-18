@@ -40,10 +40,18 @@ class _MLXTimestampItem:
 
 
 class MLXASRHelper:
-    def __init__(self, *, asr_model_path: str, aligner_model_path: str, filter_fillers: bool = True):
+    def __init__(
+        self,
+        *,
+        asr_model_path: str,
+        aligner_model_path: str,
+        filter_fillers: bool = True,
+        enable_align: bool = True,
+    ):
         self.asr_model_path = asr_model_path
         self.aligner_model_path = aligner_model_path
         self.filter_fillers = filter_fillers
+        self.enable_align = enable_align
         self.asr_model = None
         self._mlx_aligner = None
         self.vad_model = None
@@ -54,13 +62,17 @@ class MLXASRHelper:
             return
 
         print(f"📝 Loading MLX ASR model from {self.asr_model_path}...")
-        print(f"📝 Loading MLX aligner model from {self.aligner_model_path}...")
         self.asr_model = load_mlx_stt_model(self.asr_model_path)
-        try:
-            self._mlx_aligner = load_mlx_stt_model(self.aligner_model_path)
-        except ValueError as exc:
+        if self.enable_align:
+            print(f"📝 Loading MLX aligner model from {self.aligner_model_path}...")
+            try:
+                self._mlx_aligner = load_mlx_stt_model(self.aligner_model_path)
+            except ValueError as exc:
+                self._mlx_aligner = None
+                print(f"⚠️  Failed to load MLX aligner ({exc}); continuing without word alignment.")
+        else:
             self._mlx_aligner = None
-            print(f"⚠️  Failed to load MLX aligner ({exc}); continuing without word alignment.")
+            print("⏭️  Alignment disabled; skipping MLX aligner load.")
         print("✅ ASR model loaded!")
 
     def unload_models(self):
@@ -105,7 +117,7 @@ class MLXASRHelper:
             return []
 
         aligned_items = []
-        if self._mlx_aligner is not None:
+        if self.enable_align and self._mlx_aligner is not None:
             try:
                 align_result = self._mlx_aligner.generate(audio_path, text=text, language=source_lang)
             except TypeError:
