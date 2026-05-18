@@ -21,7 +21,7 @@ export type Segment = z.infer<typeof segmentSchema>;
 export const segmentKeywordSchema = z
   .object({
     segment_id: z.number().optional(),
-    words: z.array(z.string()).default([]),
+    keywords: z.array(z.string()).default([]),
   })
   .passthrough();
 

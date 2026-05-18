@@ -29,11 +29,11 @@ describe("highlight schema", () => {
     const parsed = highlightSchema.parse({
       start: 0,
       end: 5,
-      segment_keywords: [{ segment_id: 1, words: ["foo"], extra: "kept" }],
+      segment_keywords: [{ segment_id: 1, keywords: ["foo"], extra: "kept" }],
     });
     expect(parsed.segment_keywords[0]).toMatchObject({
       segment_id: 1,
-      words: ["foo"],
+      keywords: ["foo"],
       extra: "kept",
     });
   });
