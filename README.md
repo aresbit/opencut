@@ -1,218 +1,234 @@
 # pycut
 
-> 基于 AI 的视频自动剪辑工具，专为 Apple Silicon Mac 打造。
+> AI-powered video clipping for Apple Silicon Macs.
 
-pycut 能够自动将长视频转录、分析，提取精华片段，并生成带有双语字幕的短视频——无需手动剪辑，一条命令搞定。
+**Languages:** [English](README.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
-## 功能特性
+`pycut` transcribes long-form video or audio, extracts highlight-worthy moments with an OpenAI-compatible LLM, and exports subtitles, timelines, or burned-in videos from a single CLI.
 
-- **🎙️ 本地语音识别**：基于 MLX 的 Parakeet 模型，在 Apple Silicon 上完全本地运行，无需联网
-- **🤖 AI 精华提取**：通过 OpenAI 兼容 API 分析内容，自动识别最具价值的片段并生成标题（支持 OpenAI、Gemini、DeepSeek、Ollama 等）
-- **🌐 多语言字幕**：支持翻译与双语字幕叠加，可配置显示位置
-- **🔑 关键词高亮**：AI 自动识别每段字幕中的核心关键词并以高亮样式标注
-- **📁 多种输出格式**：支持 SRT、ASS、FCPXML（Final Cut Pro/DaVinci Resolve）、MP4、TXT、JSON
-- **↕️ 横竖屏支持**：自动适配横屏与竖屏布局（含黑边填充）
-- **📦 内存高效**：按需加载/卸载模型，适合长视频批量处理
-- **🔄 断点复用**：可使用已有转录 JSON 跳过 ASR，加速二次处理
+## Features
 
-## 系统要求
+- Local ASR on Apple Silicon with MLX-backed models
+- AI highlight extraction and auto-generated titles
+- Translation and bilingual subtitle layouts
+- Keyword highlighting for important words inside subtitles
+- Multiple export targets: `srt`, `ass`, `fcpxml`, `video`, `txt`, `json`
+- Landscape and portrait output support
+- Transcript JSON reuse to skip ASR on reruns
+- Memory-aware pipeline that unloads models between stages
 
-| 项目 | 要求 |
-|------|------|
-| 操作系统 | macOS（Apple Silicon，即 M 系列芯片）|
-| Python | ≥ 3.12（推荐通过 [uv](https://github.com/astral-sh/uv) 或 [Homebrew](https://brew.sh) 安装）|
-| FFmpeg | 需要安装并在 PATH 中可用（`brew install ffmpeg`）|
-| Gemini API Key | **仅在使用 AI 精华提取或关键词高亮时需要**（支持任何 OpenAI 兼容 API）；纯字幕生成（`--no-clip`）无需该 Key |
+## Requirements
 
-> **注意**：pycut 目前仅支持 macOS + Apple Silicon（arm64），不支持 Intel Mac 或 Linux。
+| Item | Requirement |
+| --- | --- |
+| OS | macOS on Apple Silicon (`arm64` / `aarch64`) |
+| Python | 3.12+ |
+| FFmpeg | Must be installed and available in `PATH` |
+| API key | Required only for AI highlight extraction, keyword highlighting, or transcript correction |
 
-## 安装
+`pycut` currently rejects Intel Macs and non-macOS environments at runtime.
 
-### 1. 安装 FFmpeg
+## Install
+
+### 1. Install FFmpeg
 
 ```bash
 brew install ffmpeg
 ```
 
-### 2. 安装 pycut
-
-推荐使用 [uv](https://github.com/astral-sh/uv) 管理依赖（会自动安装所需 Python 版本）：
+### 2. Clone the repository
 
 ```bash
-# 克隆仓库
 git clone https://github.com/sysulq/pycut.git
 cd pycut
+```
 
-# 安装依赖（开发模式，不提供 pycut 命令）
+### 3. Install dependencies
+
+Recommended for local development:
+
+```bash
 uv sync --prerelease=allow
 ```
 
-也可以作为工具安装（提供 `pycut` 命令）：
+Alternative installs:
 
 ```bash
 uv tool install . --prerelease=allow
 ```
 
-或者使用 pip：
-
 ```bash
 pip install -e .
 ```
 
-### 3. 配置 API Key（可选，用于 AI 精华提取）
+## Configure an API key
+
+Set an OpenAI-compatible API key if you want AI-assisted clipping, keyword highlighting, or transcript correction:
 
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
 ```
 
-或者在每次运行时通过 `--api-key` 参数传入。如需使用其他 OpenAI 兼容 API，可通过 `--base-url` 指定：
+You can also pass it per run with `--api-key`. To use a compatible provider such as Gemini or DeepSeek, add `--base-url` and optionally `--model`.
 
 ```bash
-# 使用 Gemini
-pycut my_video.mp4 --api-key YOUR_KEY --base-url https://generativelanguage.googleapis.com/v1beta/openai
+# Gemini
+uv run --prerelease=allow pycut input.mp4 \
+  --api-key YOUR_KEY \
+  --base-url https://generativelanguage.googleapis.com/v1beta/openai
 
-# 使用 DeepSeek
-pycut my_video.mp4 --api-key YOUR_KEY --base-url https://api.deepseek.com --model deepseek-chat
+# DeepSeek
+uv run --prerelease=allow pycut input.mp4 \
+  --api-key YOUR_KEY \
+  --base-url https://api.deepseek.com \
+  --model deepseek-chat
 ```
 
-## 快速开始
+## Quick start
 
-### 提取精华片段（需要 API Key）
+Extract AI-selected highlights and export a rendered video plus subtitles:
 
 ```bash
-pycut my_video.mp4 --api-key YOUR_KEY --format video,srt
+uv run --prerelease=allow pycut my_video.mp4 \
+  --api-key YOUR_KEY \
+  --format video,srt
 ```
 
-### 生成字幕文件（不剪辑）
+Generate subtitles only, without highlight clipping:
 
 ```bash
-pycut my_video.mp4 --no-clip --format srt
+uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
 ```
 
-### 中英双语字幕
+Create bilingual subtitles:
 
 ```bash
-pycut my_video.mp4 \
+uv run --prerelease=allow pycut my_video.mp4 \
   --translate \
   --source-lang en \
   --target-lang zh-CN \
   --format video,srt
 ```
 
-### 导出 FCPXML 到 Final Cut Pro
+Export an FCPXML timeline:
 
 ```bash
-pycut my_video.mp4 \
+uv run --prerelease=allow pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format fcpxml \
-  --fcpxml-frame-rate 30.0
+  --fcpxml-frame-rate 30
 ```
 
-## 详细使用说明
+## CLI usage
 
-### 基本语法
-
-```
-pycut <视频文件/目录/通配符> [选项]
+```text
+pycut <video-file|directory|glob> [options]
 ```
 
-> **兼容说明**：也可继续使用 `python main.py ...`（效果相同）。
+Development entrypoints:
 
-`video_inputs` 支持：
-- 单个文件：`video.mp4`
-- 目录：`./videos/`（自动扫描所有支持的视频/音频格式）
-- 通配符：`./recordings/*.mp4`
-- 多个路径：`a.mp4 b.mp4 c.mp4`
+- `uv run --prerelease=allow pycut ...`
+- `python -m pycut ...`
+- `python main.py ...` for compatibility only
 
-支持的格式：MP4、MOV、MKV、AVI、M4V、WebM、WAV、MP3、M4A、AAC、FLAC、OGG
+Input expansion supports:
 
-### 全部参数
+- A single file: `video.mp4`
+- A directory: `./videos/`
+- A glob: `./recordings/*.mp4`
+- Multiple inputs: `a.mp4 b.mp4 c.mp4`
 
-#### 输入 / 输出
+Supported media extensions:
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `video_inputs` | — | 视频文件、目录或通配符（必填）|
-| `-o, --output-dir` | 输入文件同级的同名目录 | 输出目录；未传时默认在每个输入媒体文件旁创建一个与文件名同名的目录（去掉扩展名）并将所有产物放进去 |
-| `--transcript JSON_FILE` | — | 使用已有转录 JSON，跳过 ASR |
-| `--format` | `srt` | 输出格式，逗号分隔（`ass,srt,fcpxml,video,txt,json`）|
+- Video: `mp4`, `mov`, `mkv`, `avi`, `m4v`, `webm`
+- Audio: `wav`, `mp3`, `m4a`, `aac`, `flac`, `ogg`
 
-#### 语音识别（ASR）
+## Common options
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--asr-model` | 按 `source-lang` 自动选择 | ASR 模型路径；英文默认 `mlx-community/parakeet-tdt-0.6b-v3`，中文默认 `mlx-community/Qwen3-ASR-1.7B-bf16`，其他语言默认 `mlx-community/whisper-large-v3-turbo` |
-| `--aligner-model` | `mlx-community/Qwen3-ForcedAligner-0.6B-8bit` | 对齐模型路径 |
-| `--segment-duration` | `300` | 音频分段时长（秒），用于超长视频 |
-| `--no-filter-fillers` | — | 禁用口语词过滤（如"嗯"、"啊"）|
+### Input and output
 
-#### AI 分析（需要 API Key）
+| Option | Default | Description |
+| --- | --- | --- |
+| `video_inputs` | required | Media files, directories, or glob patterns |
+| `-o, --output-dir` | sibling folder named after the input stem | Output directory |
+| `--transcript JSON_FILE` | none | Reuse an existing transcript JSON and skip ASR |
+| `--format` | `srt` | Comma-separated output formats |
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--api-key` | — | OpenAI 兼容 API Key（也可通过 `OPENAI_API_KEY` 环境变量设置）|
-| `--base-url` | `https://api.openai.com/v1` | OpenAI 兼容 API 的 Base URL |
-| `--model` | `gpt-4o-mini` | LLM 模型名称 |
-| `--no-clip` | — | 禁用 AI 精华提取，输出完整视频字幕（**不需要 API Key**）|
-| `--highlight` | — | 在 `--no-clip` 模式下启用关键词高亮（需要 API Key；必须与 `--no-clip` 一起使用）|
+### ASR
 
-#### 字幕
+| Option | Default | Description |
+| --- | --- | --- |
+| `--asr-model` | auto by source language | `en` uses Parakeet, `zh*` uses Qwen3 ASR, others use Whisper Large v3 Turbo |
+| `--aligner-model` | `mlx-community/Qwen3-ForcedAligner-0.6B-8bit` | Word alignment model |
+| `--segment-duration` | `300` | Audio chunk size in seconds for long media |
+| `--no-filter-fillers` | off | Keep filler words such as `um` / `uh` |
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--max-duration` | `30.0` | 单段字幕最大时长（秒）|
-| `--max-chars` | `30` | 单段字幕最大字符数 |
-| `--translate` | — | 启用字幕翻译 |
-| `--source-lang` | `en` | 源语言代码（如 `zh-CN`、`en`、`ja`）|
-| `--target-lang` | `en` | 目标语言代码 |
-| `--subtitle-position` | `translated-top` | 双语字幕布局：`translated-top`（译文在上）或 `original-top`（原文在上）|
-| `--first-subtitle-delay` | `0.01` | 首帧字幕延迟（秒），用于封面帧效果 |
-| `--max-title-chars` | `6` | 标题最大字符数 |
-| `--max-subtitle-chars` | `10` | 副标题最大字符数 |
-| `--no-filter-empty-segments` | — | 保留空内容的字幕段 |
-| `--margin-left` | `-100` | 字幕段左边距调整（毫秒，负值表示提前）|
-| `--margin-right` | `150` | 字幕段右边距调整（毫秒）|
+### AI analysis
 
-#### 视频渲染
+| Option | Default | Description |
+| --- | --- | --- |
+| `--api-key` | env or none | OpenAI-compatible API key |
+| `--base-url` | OpenAI endpoint when omitted | Compatible API base URL |
+| `--model` | provider default | LLM model name |
+| `--no-clip` | off | Disable AI highlight extraction and keep the full subtitle timeline |
+| `--highlight` | off | Detect subtitle keywords in `--no-clip` mode |
+| `--correct-words` | off | Use the LLM to correct ASR mistakes and print a diff |
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--orientation` | `landscape` | 视频方向：`landscape`（横屏）或 `portrait`（竖屏）|
+### Subtitle and styling
 
-#### FCPXML 导出
+| Option | Default | Description |
+| --- | --- | --- |
+| `--translate` | off | Translate subtitles |
+| `--source-lang` | `en` | Source language code |
+| `--target-lang` | `en` | Target language code |
+| `--subtitle-position` | `translated-top` | Bilingual subtitle stacking |
+| `--original-subtitle-color` | `#FFFFFF` | Original subtitle color |
+| `--translation-subtitle-color` | `#FFA500` | Translation subtitle color |
+| `--highlight-subtitle-color` | `#FFFF00` | Keyword highlight color |
+| `--max-duration` | `30.0` | Maximum subtitle segment duration in seconds |
+| `--max-chars` | `30` | Maximum characters per subtitle segment |
+| `--first-subtitle-delay` | `1.0` | Delay before the first subtitle frame |
+| `--max-title-chars` | `6` | Maximum highlight title length |
+| `--max-subtitle-chars` | `10` | Maximum highlight subtitle length |
+| `--no-filter-empty-segments` | off | Keep empty subtitle segments |
+| `--margin-left` | `-100` | Start shift in milliseconds |
+| `--margin-right` | `150` | End shift in milliseconds |
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--fcpxml-frame-rate` | `25.0` | FCPXML 帧率 |
-| `--fcpxml-speed` | `1.0` | 时间线速度倍数（如 `1.1` 表示 1.1 倍速）|
+### Rendering and editing exports
 
-### 输出格式说明
+| Option | Default | Description |
+| --- | --- | --- |
+| `--orientation` | `landscape` | `landscape` or `portrait` output |
+| `--fcpxml-frame-rate` | `25.0` | FCPXML frame rate |
+| `--fcpxml-speed` | `1.0` | FCPXML timeline speed multiplier |
 
-| 格式 | 说明 |
-|------|------|
-| `srt` | 标准字幕文件，可用于大多数播放器 |
-| `ass` | 高级字幕格式，含样式（颜色、字体、双语布局）|
-| `fcpxml` | Final Cut Pro / DaVinci Resolve 时间线文件 |
-| `video` | 渲染并烧录字幕的 MP4 视频文件 |
-| `txt` | 纯文本转录稿 |
-| `json` | 带时间戳的转录 JSON，可用于 `--transcript` 复用 |
+## Output formats
 
-## 使用示例
+| Format | Description |
+| --- | --- |
+| `srt` | Standard subtitle file |
+| `ass` | Styled subtitle file with bilingual layout and highlighting |
+| `fcpxml` | Timeline export for Final Cut Pro / DaVinci Resolve |
+| `video` | Burned-in MP4 output |
+| `txt` | Plain transcript |
+| `json` | Timestamped transcript JSON reusable with `--transcript` |
 
-### 示例 1：批量处理目录中所有视频
+## Examples
+
+Process every file in a directory:
 
 ```bash
-pycut ./recordings/ \
+uv run --prerelease=allow pycut ./recordings/ \
   --api-key YOUR_KEY \
   --format video,srt,json \
   -o ./output
 ```
 
-### 示例 2：竖屏短视频 + 中英双语字幕
+Portrait short-form video with bilingual subtitles:
 
 ```bash
-pycut lecture.mp4 \
-  --gemini-api-key YOUR_KEY \
+uv run --prerelease=allow pycut lecture.mp4 \
+  --api-key YOUR_KEY \
   --orientation portrait \
   --translate \
   --source-lang en \
@@ -221,92 +237,60 @@ pycut lecture.mp4 \
   --format video,ass
 ```
 
-### 示例 3：复用已有转录，不重新跑 ASR
+Reuse an existing transcript and skip ASR:
 
 ```bash
-# 首次处理，保存 JSON
-pycut video.mp4 --format json -o ./output
+uv run --prerelease=allow pycut video.mp4 --format json -o ./output
 
-# 再次处理，跳过 ASR
-pycut video.mp4 \
+uv run --prerelease=allow pycut video.mp4 \
   --transcript ./output/video.json \
-  --gemini-api-key YOUR_KEY \
+  --api-key YOUR_KEY \
   --format video,srt
 ```
 
-### 示例 4：不剪辑，仅生成带关键词高亮的字幕
+Keep the full timeline but still highlight keywords:
 
 ```bash
-pycut interview.mp4 \
+uv run --prerelease=allow pycut interview.mp4 \
   --no-clip \
   --highlight \
-  --gemini-api-key YOUR_KEY \
+  --api-key YOUR_KEY \
   --format ass,srt
 ```
 
-### 示例 5：导出 FCPXML 用于 Final Cut Pro 剪辑
+Translate Chinese speech to English and export FCPXML:
 
 ```bash
-pycut keynote.mp4 \
-  --gemini-api-key YOUR_KEY \
-  --format fcpxml \
-  --fcpxml-frame-rate 29.97 \
-  --fcpxml-speed 1.0 \
-  -o ./fcp_project
-```
-
-### 示例 6：剪辑中文视频/音频，翻译为英文并导出 FCPXML
-
-```bash
-pycut --translate \
+uv run --prerelease=allow pycut ~/Movies/vad_example.wav \
+  --translate \
   --source-lang zh \
   --target-lang en \
-  --max-chars 10 \
-  --format fcpxml \
-  ~/Movies/vad_example.wav \
-  -o ~/Movies/youtube/ \
   --no-clip \
-  --highlight
+  --highlight \
+  --api-key YOUR_KEY \
+  --format fcpxml \
+  -o ~/Movies/youtube/
 ```
 
-### 示例 7：剪辑英文视频目录，翻译为中文并导出竖屏视频
+Correct transcript wording before exporting subtitles:
 
 ```bash
-pycut --translate \
-  --source-lang en \
-  --target-lang zh \
-  --max-chars 50 \
-  --format video \
-  --highlight \
-  --orientation portrait \
-  ~/Movies/youtube/
+uv run --prerelease=allow pycut podcast.mp4 \
+  --api-key YOUR_KEY \
+  --correct-words \
+  --no-clip \
+  --format srt,json
 ```
 
-## 工作流程
+## Pipeline
 
-```
-视频文件
-    │
-    ▼
-[音频提取]
-    │
-    ▼
-[ASR 语音转录] ──────── mlx-community/parakeet-tdt-0.6b-v3
-    │                   mlx-community/Qwen3-ForcedAligner-0.6B-8bit
-    ▼
-[内容分析] ──────────── Google Gemini API
-    │   ├── AI 精华片段提取（--clip，默认）
-    │   └── 关键词高亮（--highlight，用于 --no-clip 模式）
-    ▼
-[字幕生成] ──────────── 支持翻译、双语布局、关键词高亮
-    │
-    ▼
-[输出]
-    ├── SRT / ASS 字幕
-    ├── FCPXML 时间线
-    ├── 渲染视频（MP4）
-    ├── 文本转录稿
-    └── 转录 JSON
+```text
+media
+  -> audio extraction
+  -> ASR + alignment
+  -> optional AI highlight extraction / keyword detection / transcript correction
+  -> subtitle generation
+  -> SRT / ASS / FCPXML / MP4 / TXT / JSON outputs
 ```
 
 ## License
