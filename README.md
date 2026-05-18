@@ -1,94 +1,64 @@
 # pycut
 
-> AI-powered video clipping for Apple Silicon Macs.
+> AI-powered video clipping CLI, written in TypeScript and runnable as a single spawn-friendly `dist/cli.js`.
 
-**Languages:** [English](README.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
-
-`pycut` transcribes long-form video or audio, extracts highlight-worthy moments with an OpenAI-compatible LLM, and exports subtitles, timelines, or burned-in videos from a single CLI.
+`pycut` transcribes long-form video or audio, extracts highlight-worthy moments via an OpenAI-compatible LLM, and exports subtitles, timelines, or burned-in videos from a single CLI.
 
 ## Features
 
-- Local ASR on Apple Silicon with MLX-backed models
-- AI highlight extraction and auto-generated titles
-- Translation and bilingual subtitle layouts
+- Cross-platform ASR via [whisper.cpp](https://github.com/ggerganov/whisper.cpp) (through `smart-whisper`)
+- AI highlight extraction and auto-generated titles via any OpenAI-compatible API
+- Translation and bilingual subtitle layouts via `@vitalets/google-translate-api`
 - Keyword highlighting for important words inside subtitles
 - Multiple export targets: `srt`, `ass`, `fcpxml`, `video`, `txt`, `json`
-- Landscape and portrait output support
+- Landscape and portrait output
 - Transcript JSON reuse to skip ASR on reruns
-- Memory-aware pipeline that unloads models between stages
+- Pluggable backends — bring your own ASR, VAD, or translation provider
 
 ## Requirements
 
 | Item | Requirement |
 | --- | --- |
-| OS | macOS on Apple Silicon (`arm64` / `aarch64`) |
-| Python | 3.12+ |
-| FFmpeg | Must be installed and available in `PATH` |
+| Runtime | Node 20+ or Bun 1.2+ (development uses Bun) |
+| FFmpeg | `ffmpeg` and `ffprobe` on `PATH` |
+| Whisper model | A whisper.cpp GGML model (e.g. `ggml-large-v3-turbo.bin`) |
 | API key | Required only for AI highlight extraction, keyword highlighting, or transcript correction |
-
-`pycut` currently rejects Intel Macs and non-macOS environments at runtime.
 
 ## Install
 
-### 1. Install FFmpeg
-
 ```bash
-brew install ffmpeg
+bun install
+bun run build
 ```
 
-### 2. Install `pycut`
-
-Recommended for normal usage:
+Optional native backends — install only the ones you actually use:
 
 ```bash
-uv tool install https://github.com/cliptate/pycut.git
+# Whisper.cpp in-process ASR (provides word timestamps)
+bun add smart-whisper
+
+# Silero VAD (if you want per-utterance chunking before ASR)
+bun add @ricky0123/vad-node onnxruntime-node
 ```
 
-After installation, you can run `pycut` directly:
-
-```bash
-pycut --help
-```
-
-If you update later, reinstall or upgrade the tool with `uv tool`.
-
-### 3. Clone the repository for local development
-
-```bash
-git clone https://github.com/cliptate/pycut.git
-cd pycut
-```
-
-For local development:
-
-```bash
-uv sync
-```
-
-Then run the CLI from the repo checkout with:
-
-```bash
-uv run pycut --help
-```
+Download a whisper.cpp model file from the [ggerganov/whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and either pass `--asr-model /path/to/ggml-…bin` or export `PYCUT_WHISPER_MODEL=/path/to/ggml-…bin`.
 
 ## Configure an API key
-
-Set an OpenAI-compatible API key if you want AI-assisted clipping, keyword highlighting, or transcript correction:
 
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
 ```
 
-You can also pass it per run with `--api-key`. To use a compatible provider such as Gemini or DeepSeek, add `--base-url` and optionally `--model`.
+Or pass `--api-key` per invocation. To use a compatible provider such as Gemini or DeepSeek, add `--base-url` and optionally `--model`:
 
 ```bash
 # Gemini
-pycut input.mp4 \
+./dist/cli.js input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://generativelanguage.googleapis.com/v1beta/openai
 
 # DeepSeek
-pycut input.mp4 \
+./dist/cli.js input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://api.deepseek.com \
   --model deepseek-v4-flash
@@ -99,7 +69,8 @@ pycut input.mp4 \
 Extract AI-selected highlights and export a rendered video plus subtitles:
 
 ```bash
-pycut my_video.mp4 \
+./dist/cli.js my_video.mp4 \
+  --asr-model /models/ggml-large-v3-turbo.bin \
   --api-key YOUR_KEY \
   --format video,srt
 ```
@@ -107,13 +78,16 @@ pycut my_video.mp4 \
 Generate subtitles only, without highlight clipping:
 
 ```bash
-pycut my_video.mp4 --no-clip --format srt
+./dist/cli.js my_video.mp4 \
+  --asr-model /models/ggml-large-v3-turbo.bin \
+  --no-clip --format srt
 ```
 
 Create bilingual subtitles:
 
 ```bash
-pycut my_video.mp4 \
+./dist/cli.js my_video.mp4 \
+  --asr-model /models/ggml-large-v3-turbo.bin \
   --translate \
   --source-lang en \
   --target-lang zh-CN \
@@ -123,27 +97,38 @@ pycut my_video.mp4 \
 Export an FCPXML timeline:
 
 ```bash
-pycut my_video.mp4 \
+./dist/cli.js my_video.mp4 \
+  --asr-model /models/ggml-large-v3-turbo.bin \
   --api-key YOUR_KEY \
   --format fcpxml \
   --fcpxml-frame-rate 30
 ```
 
+## Dev workflow
+
+```bash
+bun run dev <args>      # run TS directly, no build
+bun test                # run vitest-style bun:test suite
+bun run typecheck       # tsc --noEmit
+bun run lint            # biome check
+bun run build           # bundle to dist/cli.js (Node target, shebang)
+```
+
+## Spawn from another tool
+
+`dist/cli.js` has a `#!/usr/bin/env node` shebang. Any process can spawn it:
+
+```ts
+import { spawn } from "node:child_process";
+
+const child = spawn("node", ["./dist/cli.js", "video.mp4", "--format", "srt"]);
+```
+
 ## CLI usage
 
 ```text
-pycut <video-file|directory|glob> [options]
+./dist/cli.js <video-file|directory|glob> [options]
 ```
-
-When installed with `uv tool`, use:
-
-- `pycut ...`
-
-Development entrypoints from a local checkout:
-
-- `uv run pycut ...`
-- `python -m pycut ...`
-- `python main.py ...` for compatibility only
 
 Input expansion supports:
 
@@ -157,64 +142,7 @@ Supported media extensions:
 - Video: `mp4`, `mov`, `mkv`, `avi`, `m4v`, `webm`
 - Audio: `wav`, `mp3`, `m4a`, `aac`, `flac`, `ogg`
 
-## Common options
-
-### Input and output
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `video_inputs` | required | Media files, directories, or glob patterns |
-| `-o, --output-dir` | sibling folder named after the input stem | Output directory |
-| `--transcript JSON_FILE` | none | Reuse an existing transcript JSON and skip ASR |
-| `--format` | `srt` | Comma-separated output formats |
-
-### ASR
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--asr-model` | auto by source language | `en` uses Parakeet, `zh*` uses Qwen3 ASR, others use Whisper Large v3 Turbo |
-| `--aligner-model` | `mlx-community/Qwen3-ForcedAligner-0.6B-8bit` | Word alignment model |
-| `--segment-duration` | `300` | Audio chunk size in seconds for long media |
-| `--no-filter-fillers` | off | Keep filler words such as `um` / `uh` |
-
-### AI analysis
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--api-key` | env or none | OpenAI-compatible API key |
-| `--base-url` | OpenAI endpoint when omitted | Compatible API base URL |
-| `--model` | provider default | LLM model name |
-| `--no-clip` | off | Disable AI highlight extraction and keep the full subtitle timeline |
-| `--highlight` | off | Detect subtitle keywords in `--no-clip` mode |
-| `--correct-words` | off | Use the LLM to correct ASR mistakes and print a diff |
-
-### Subtitle and styling
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--translate` | off | Translate subtitles |
-| `--source-lang` | `en` | Source language code |
-| `--target-lang` | `en` | Target language code |
-| `--subtitle-position` | `translated-top` | Bilingual subtitle stacking |
-| `--original-subtitle-color` | `#FFFFFF` | Original subtitle color |
-| `--translation-subtitle-color` | `#FFA500` | Translation subtitle color |
-| `--highlight-subtitle-color` | `#FFFF00` | Keyword highlight color |
-| `--max-duration` | `30.0` | Maximum subtitle segment duration in seconds |
-| `--max-chars` | `30` | Maximum characters per subtitle segment |
-| `--first-subtitle-delay` | `1.0` | Delay before the first subtitle frame |
-| `--max-title-chars` | `6` | Maximum highlight title length |
-| `--max-subtitle-chars` | `10` | Maximum highlight subtitle length |
-| `--no-filter-empty-segments` | off | Keep empty subtitle segments |
-| `--margin-left` | `-100` | Start shift in milliseconds |
-| `--margin-right` | `150` | End shift in milliseconds |
-
-### Rendering and editing exports
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--orientation` | `landscape` | `landscape` or `portrait` output |
-| `--fcpxml-frame-rate` | `25.0` | FCPXML frame rate |
-| `--fcpxml-speed` | `1.0` | FCPXML timeline speed multiplier |
+Run `./dist/cli.js --help` for the full flag list.
 
 ## Output formats
 
@@ -227,82 +155,13 @@ Supported media extensions:
 | `txt` | Plain transcript |
 | `json` | Timestamped transcript JSON reusable with `--transcript` |
 
-## Examples
-
-Process every file in a directory:
-
-```bash
-pycut ./recordings/ \
-  --api-key YOUR_KEY \
-  --format video,srt,json \
-  -o ./output
-```
-
-Portrait short-form video with bilingual subtitles:
-
-```bash
-pycut lecture.mp4 \
-  --api-key YOUR_KEY \
-  --orientation portrait \
-  --translate \
-  --source-lang en \
-  --target-lang zh-CN \
-  --subtitle-position translated-top \
-  --format video,ass
-```
-
-Reuse an existing transcript and skip ASR:
-
-```bash
-pycut video.mp4 --format json -o ./output
-
-pycut video.mp4 \
-  --transcript ./output/video.json \
-  --api-key YOUR_KEY \
-  --format video,srt
-```
-
-Keep the full timeline but still highlight keywords:
-
-```bash
-pycut interview.mp4 \
-  --no-clip \
-  --highlight \
-  --api-key YOUR_KEY \
-  --format ass,srt
-```
-
-Translate Chinese speech to English and export FCPXML:
-
-```bash
-pycut ~/Movies/vad_example.wav \
-  --translate \
-  --source-lang zh \
-  --target-lang en \
-  --no-clip \
-  --highlight \
-  --api-key YOUR_KEY \
-  --format fcpxml \
-  -o ~/Movies/youtube/
-```
-
-Correct transcript wording before exporting subtitles:
-
-```bash
-pycut podcast.mp4 \
-  --api-key YOUR_KEY \
-  --correct-words \
-  --no-clip \
-  --format srt,json
-```
-
 ## Pipeline
 
 ```text
 media
-  -> audio extraction
-  -> ASR + alignment
-  -> optional AI highlight extraction / keyword detection / transcript correction
+  -> audio extraction (ffmpeg)
+  -> ASR + word timestamps (whisper.cpp via smart-whisper)
+  -> optional LLM highlight extraction / keyword detection / transcript correction
   -> subtitle generation
   -> SRT / ASS / FCPXML / MP4 / TXT / JSON outputs
 ```
