@@ -30,23 +30,42 @@
 
 ## 安装
 
+### 1. 安装 FFmpeg
+
 ```bash
 brew install ffmpeg
-git clone https://github.com/sysulq/pycut.git
+```
+
+### 2. 安装 `pycut`
+
+日常使用推荐直接安装命令行工具：
+
+```bash
+uv tool install https://github.com/cliptate/pycut.git
+```
+
+安装完成后可直接使用：
+
+```bash
+pycut --help
+```
+
+后续更新时，继续使用 `uv tool` 重新安装或升级即可。
+
+### 3. 克隆仓库用于本地开发
+
+如果你要调试、修改代码或运行测试，克隆仓库更合适：
+
+```bash
+git clone https://github.com/cliptate/pycut.git
 cd pycut
-uv sync --prerelease=allow
+uv sync
 ```
 
-也可以使用：
+然后在仓库目录内运行：
 
 ```bash
-uv tool install . --prerelease=allow
-```
-
-或：
-
-```bash
-pip install -e .
+uv run pycut --help
 ```
 
 ## 配置 API Key
@@ -58,7 +77,7 @@ export OPENAI_API_KEY="your_api_key_here"
 也可以在运行时传入 `--api-key`。如果使用 Gemini、DeepSeek 等兼容 OpenAI 的接口，增加 `--base-url` 即可：
 
 ```bash
-uv run --prerelease=allow pycut input.mp4 \
+pycut input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://generativelanguage.googleapis.com/v1beta/openai
 ```
@@ -68,7 +87,7 @@ uv run --prerelease=allow pycut input.mp4 \
 提取高光并输出视频加字幕：
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format video,srt
 ```
@@ -76,18 +95,20 @@ uv run --prerelease=allow pycut my_video.mp4 \
 只生成字幕，不做 AI 剪辑：
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
+pycut my_video.mp4 --no-clip --format srt
 ```
 
 生成双语字幕：
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --translate \
   --source-lang en \
   --target-lang zh-CN \
   --format video,srt
 ```
+
+如果你是从源码仓库中运行，请把上面的 `pycut` 替换为 `uv run pycut`。
 
 ## 常用参数
 
@@ -121,7 +142,7 @@ uv run --prerelease=allow pycut my_video.mp4 \
 竖屏双语短视频：
 
 ```bash
-uv run --prerelease=allow pycut lecture.mp4 \
+pycut lecture.mp4 \
   --api-key YOUR_KEY \
   --orientation portrait \
   --translate \
@@ -133,9 +154,9 @@ uv run --prerelease=allow pycut lecture.mp4 \
 复用已有转录：
 
 ```bash
-uv run --prerelease=allow pycut video.mp4 --format json -o ./output
+pycut video.mp4 --format json -o ./output
 
-uv run --prerelease=allow pycut video.mp4 \
+pycut video.mp4 \
   --transcript ./output/video.json \
   --api-key YOUR_KEY \
   --format video,srt

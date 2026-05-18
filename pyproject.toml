@@ -11,7 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "openai>=1.0.0",
     "httpx<0.28",
-    "mlx-audio>=0.4.1",
+    "mlx-audio>=0.4.3",
     "py-googletrans>=4.0.0",
     "pyobjc-framework-naturallanguage>=12.1",
     "silero-vad>=6.2.1",

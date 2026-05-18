@@ -27,21 +27,45 @@
 
 ## Installation
 
+### 1. FFmpeg installieren
+
 ```bash
 brew install ffmpeg
-git clone https://github.com/sysulq/pycut.git
+```
+
+### 2. `pycut` installieren
+
+Für die normale Nutzung empfohlen:
+
+```bash
+uv tool install https://github.com/cliptate/pycut.git
+```
+
+Danach kannst du `pycut` direkt ausführen:
+
+```bash
+pycut --help
+```
+
+Für spätere Updates kannst du das Tool mit `uv tool` erneut installieren oder aktualisieren.
+
+### 3. Repository für lokale Entwicklung klonen
+
+```bash
+git clone https://github.com/cliptate/pycut.git
 cd pycut
-uv sync --prerelease=allow
 ```
 
-Alternativen:
+Für lokale Entwicklung:
 
 ```bash
-uv tool install . --prerelease=allow
+uv sync
 ```
 
+Danach die CLI im Checkout starten mit:
+
 ```bash
-pip install -e .
+uv run pycut --help
 ```
 
 ## API-Key konfigurieren
@@ -57,7 +81,7 @@ Mit `--base-url` lassen sich auch Gemini, DeepSeek oder andere OpenAI-kompatible
 Highlights extrahieren und Video plus Untertitel exportieren:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format video,srt
 ```
@@ -65,7 +89,7 @@ uv run --prerelease=allow pycut my_video.mp4 \
 Nur Untertitel erzeugen:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
+pycut my_video.mp4 --no-clip --format srt
 ```
 
 ## Wichtige Optionen
@@ -99,7 +123,7 @@ uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
 Hochformat mit zweisprachigen Untertiteln:
 
 ```bash
-uv run --prerelease=allow pycut lecture.mp4 \
+pycut lecture.mp4 \
   --api-key YOUR_KEY \
   --orientation portrait \
   --translate \
@@ -107,6 +131,8 @@ uv run --prerelease=allow pycut lecture.mp4 \
   --target-lang zh-CN \
   --format video,ass
 ```
+
+Wenn du aus dem Quellcode-Checkout arbeitest, ersetze `pycut` durch `uv run pycut`.
 
 ## Pipeline
 

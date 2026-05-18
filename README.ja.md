@@ -27,21 +27,45 @@
 
 ## インストール
 
+### 1. FFmpeg をインストール
+
 ```bash
 brew install ffmpeg
-git clone https://github.com/sysulq/pycut.git
+```
+
+### 2. `pycut` をインストール
+
+通常利用では次を推奨します:
+
+```bash
+uv tool install https://github.com/cliptate/pycut.git
+```
+
+インストール後は `pycut` をそのまま実行できます:
+
+```bash
+pycut --help
+```
+
+更新時も `uv tool` で再インストールまたはアップグレードできます。
+
+### 3. ローカル開発用にリポジトリをクローン
+
+```bash
+git clone https://github.com/cliptate/pycut.git
 cd pycut
-uv sync --prerelease=allow
 ```
 
-代替方法:
+ローカル開発では:
 
 ```bash
-uv tool install . --prerelease=allow
+uv sync
 ```
 
+その後、チェックアウトしたディレクトリで次を実行します:
+
 ```bash
-pip install -e .
+uv run pycut --help
 ```
 
 ## API キー設定
@@ -57,7 +81,7 @@ Gemini や DeepSeek などの OpenAI 互換 API を使う場合は `--base-url` 
 ハイライトを抽出して動画と字幕を出力:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format video,srt
 ```
@@ -65,7 +89,7 @@ uv run --prerelease=allow pycut my_video.mp4 \
 字幕のみ生成:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
+pycut my_video.mp4 --no-clip --format srt
 ```
 
 ## よく使うオプション
@@ -99,7 +123,7 @@ uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
 縦動画 + 二言語字幕:
 
 ```bash
-uv run --prerelease=allow pycut lecture.mp4 \
+pycut lecture.mp4 \
   --api-key YOUR_KEY \
   --orientation portrait \
   --translate \
@@ -107,6 +131,8 @@ uv run --prerelease=allow pycut lecture.mp4 \
   --target-lang zh-CN \
   --format video,ass
 ```
+
+ソースコードのチェックアウトから実行する場合は、`pycut` を `uv run pycut` に置き換えてください。
 
 ## パイプライン
 

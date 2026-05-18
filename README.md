@@ -36,29 +36,39 @@
 brew install ffmpeg
 ```
 
-### 2. Clone the repository
+### 2. Install `pycut`
+
+Recommended for normal usage:
 
 ```bash
-git clone https://github.com/sysulq/pycut.git
+uv tool install https://github.com/cliptate/pycut.git
+```
+
+After installation, you can run `pycut` directly:
+
+```bash
+pycut --help
+```
+
+If you update later, reinstall or upgrade the tool with `uv tool`.
+
+### 3. Clone the repository for local development
+
+```bash
+git clone https://github.com/cliptate/pycut.git
 cd pycut
 ```
 
-### 3. Install dependencies
-
-Recommended for local development:
+For local development:
 
 ```bash
-uv sync --prerelease=allow
+uv sync
 ```
 
-Alternative installs:
+Then run the CLI from the repo checkout with:
 
 ```bash
-uv tool install . --prerelease=allow
-```
-
-```bash
-pip install -e .
+uv run pycut --help
 ```
 
 ## Configure an API key
@@ -73,12 +83,12 @@ You can also pass it per run with `--api-key`. To use a compatible provider such
 
 ```bash
 # Gemini
-uv run --prerelease=allow pycut input.mp4 \
+pycut input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://generativelanguage.googleapis.com/v1beta/openai
 
 # DeepSeek
-uv run --prerelease=allow pycut input.mp4 \
+pycut input.mp4 \
   --api-key YOUR_KEY \
   --base-url https://api.deepseek.com \
   --model deepseek-chat
@@ -89,7 +99,7 @@ uv run --prerelease=allow pycut input.mp4 \
 Extract AI-selected highlights and export a rendered video plus subtitles:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format video,srt
 ```
@@ -97,13 +107,13 @@ uv run --prerelease=allow pycut my_video.mp4 \
 Generate subtitles only, without highlight clipping:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 --no-clip --format srt
+pycut my_video.mp4 --no-clip --format srt
 ```
 
 Create bilingual subtitles:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --translate \
   --source-lang en \
   --target-lang zh-CN \
@@ -113,7 +123,7 @@ uv run --prerelease=allow pycut my_video.mp4 \
 Export an FCPXML timeline:
 
 ```bash
-uv run --prerelease=allow pycut my_video.mp4 \
+pycut my_video.mp4 \
   --api-key YOUR_KEY \
   --format fcpxml \
   --fcpxml-frame-rate 30
@@ -125,9 +135,13 @@ uv run --prerelease=allow pycut my_video.mp4 \
 pycut <video-file|directory|glob> [options]
 ```
 
-Development entrypoints:
+When installed with `uv tool`, use:
 
-- `uv run --prerelease=allow pycut ...`
+- `pycut ...`
+
+Development entrypoints from a local checkout:
+
+- `uv run pycut ...`
 - `python -m pycut ...`
 - `python main.py ...` for compatibility only
 
@@ -218,7 +232,7 @@ Supported media extensions:
 Process every file in a directory:
 
 ```bash
-uv run --prerelease=allow pycut ./recordings/ \
+pycut ./recordings/ \
   --api-key YOUR_KEY \
   --format video,srt,json \
   -o ./output
@@ -227,7 +241,7 @@ uv run --prerelease=allow pycut ./recordings/ \
 Portrait short-form video with bilingual subtitles:
 
 ```bash
-uv run --prerelease=allow pycut lecture.mp4 \
+pycut lecture.mp4 \
   --api-key YOUR_KEY \
   --orientation portrait \
   --translate \
@@ -240,9 +254,9 @@ uv run --prerelease=allow pycut lecture.mp4 \
 Reuse an existing transcript and skip ASR:
 
 ```bash
-uv run --prerelease=allow pycut video.mp4 --format json -o ./output
+pycut video.mp4 --format json -o ./output
 
-uv run --prerelease=allow pycut video.mp4 \
+pycut video.mp4 \
   --transcript ./output/video.json \
   --api-key YOUR_KEY \
   --format video,srt
@@ -251,7 +265,7 @@ uv run --prerelease=allow pycut video.mp4 \
 Keep the full timeline but still highlight keywords:
 
 ```bash
-uv run --prerelease=allow pycut interview.mp4 \
+pycut interview.mp4 \
   --no-clip \
   --highlight \
   --api-key YOUR_KEY \
@@ -261,7 +275,7 @@ uv run --prerelease=allow pycut interview.mp4 \
 Translate Chinese speech to English and export FCPXML:
 
 ```bash
-uv run --prerelease=allow pycut ~/Movies/vad_example.wav \
+pycut ~/Movies/vad_example.wav \
   --translate \
   --source-lang zh \
   --target-lang en \
@@ -275,7 +289,7 @@ uv run --prerelease=allow pycut ~/Movies/vad_example.wav \
 Correct transcript wording before exporting subtitles:
 
 ```bash
-uv run --prerelease=allow pycut podcast.mp4 \
+pycut podcast.mp4 \
   --api-key YOUR_KEY \
   --correct-words \
   --no-clip \

@@ -2,8 +2,8 @@
 
 ## Commands
 
-- Install dependencies for local development with `uv sync --prerelease=allow`. This is the install flow documented in `README.md`.
-- Run the CLI during development with `uv run --prerelease=allow pycut ...`, `python -m pycut ...`, or `python main.py ...`. `main.py` is only a compatibility shim; the real CLI entrypoint is `pycut.cli:main`.
+- Install dependencies for local development with `uv sync`. This is the install flow documented in `README.md`.
+- Run the CLI during development with `uv run pycut ...`, `python -m pycut ...`, or `python main.py ...`. `main.py` is only a compatibility shim; the real CLI entrypoint is `pycut.cli:main`.
 - Run the full test suite with `pytest -q`.
 - Run a single test with `pytest -q src/tests/test_translation.py::test_google_translator_reports_import_error_details`.
 
