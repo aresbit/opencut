@@ -1,8 +1,26 @@
 import type { Segment } from "../models.ts";
 
-export function buildTranscription(segments: readonly Segment[]): string {
-  return segments
-    .map((seg, i) => `[${seg.start.toFixed(2)}s-${seg.end.toFixed(2)}s] ID:${i} ${seg.text}`)
+export interface IdentifiedSegment {
+  id: number;
+  segment: Segment;
+}
+
+function toIdentified(
+  segments: readonly Segment[] | readonly IdentifiedSegment[],
+): IdentifiedSegment[] {
+  if (segments.length === 0) return [];
+  const first = segments[0] as Segment | IdentifiedSegment;
+  if ("segment" in first && "id" in first) {
+    return [...(segments as readonly IdentifiedSegment[])];
+  }
+  return (segments as readonly Segment[]).map((segment, id) => ({ id, segment }));
+}
+
+export function buildTranscription(
+  segments: readonly Segment[] | readonly IdentifiedSegment[],
+): string {
+  return toIdentified(segments)
+    .map(({ id, segment }) => `[${segment.start.toFixed(2)}s-${segment.end.toFixed(2)}s] ID:${id} ${segment.text}`)
     .join("\n");
 }
 
@@ -38,7 +56,7 @@ const CORRECTIONS_JSON_SHAPE = `{
 }`;
 
 export function buildHighlightsPrompt(
-  segments: readonly Segment[],
+  segments: readonly Segment[] | readonly IdentifiedSegment[],
   targetLang: string,
 ): string {
   const transcription = buildTranscription(segments);
