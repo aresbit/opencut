@@ -1,3 +1,4 @@
+import { promises as fs } from "node:fs";
 import type { AsrBackend, AsrResult, AsrWord } from "../types.ts";
 
 export interface WhisperBackendOptions {
@@ -5,16 +6,57 @@ export interface WhisperBackendOptions {
   language?: string;
   /** Maximum words per segment hint passed to whisper.cpp. */
   maxLen?: number;
+  /**
+   * Enable GPU offload (CUDA / Metal). Defaults to `true` to match
+   * smart-whisper, which silently falls back to CPU when no GPU is
+   * available. Set to `false` to force CPU and skip the detection cost.
+   */
+  gpu?: boolean;
 }
 
 interface SmartWhisperModule {
   Whisper: new (modelPath: string, opts?: { gpu?: boolean }) => {
     transcribe(
-      audio: string | Float32Array,
+      audio: Float32Array,
       params?: Record<string, unknown>,
     ): Promise<{ result: Promise<Array<{ text: string; from: number; to: number }>> }>;
     free(): Promise<void>;
   };
+}
+
+async function loadWavAsFloat32(path: string): Promise<Float32Array> {
+  const buf = await fs.readFile(path);
+  if (buf.length < 44 || buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") {
+    throw new Error(`Not a RIFF/WAVE file: ${path}`);
+  }
+  let offset = 12;
+  let fmtChannels = 0;
+  let fmtBits = 0;
+  let dataOffset = -1;
+  let dataLen = 0;
+  while (offset + 8 <= buf.length) {
+    const id = buf.toString("ascii", offset, offset + 4);
+    const size = buf.readUInt32LE(offset + 4);
+    if (id === "fmt ") {
+      fmtChannels = buf.readUInt16LE(offset + 10);
+      fmtBits = buf.readUInt16LE(offset + 22);
+    } else if (id === "data") {
+      dataOffset = offset + 8;
+      dataLen = size;
+      break;
+    }
+    offset += 8 + size + (size % 2);
+  }
+  if (dataOffset < 0) throw new Error(`No data chunk in WAV: ${path}`);
+  if (fmtBits !== 16 || fmtChannels !== 1) {
+    throw new Error(`Expected 16-bit mono WAV, got ${fmtBits}-bit ${fmtChannels}-channel`);
+  }
+  const sampleCount = Math.floor(dataLen / 2);
+  const pcm = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
+    pcm[i] = buf.readInt16LE(dataOffset + i * 2) / 32768;
+  }
+  return pcm;
 }
 
 async function loadSmartWhisper(): Promise<SmartWhisperModule> {
@@ -39,14 +81,15 @@ export function createWhisperBackend(opts: WhisperBackendOptions): AsrBackend {
   async function ensureLoaded() {
     if (whisper) return whisper;
     const mod = await loadSmartWhisper();
-    whisper = new mod.Whisper(opts.modelPath);
+    whisper = new mod.Whisper(opts.modelPath, { gpu: opts.gpu ?? true });
     return whisper;
   }
 
   return {
     async transcribe(audioPath, { sourceLang }): Promise<AsrResult> {
       const w = await ensureLoaded();
-      const handle = await w.transcribe(audioPath, {
+      const pcm = await loadWavAsFloat32(audioPath);
+      const handle = await w.transcribe(pcm, {
         language: opts.language ?? sourceLang,
         token_timestamps: true,
         max_len: opts.maxLen ?? 1,
