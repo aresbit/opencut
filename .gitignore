@@ -16,3 +16,9 @@ wheels/
 node_modules/
 *.tsbuildinfo
 
+# Local media + model weights (large binaries, often copyrighted)
+input/
+models/
+*.mp4
+*.bin
+
