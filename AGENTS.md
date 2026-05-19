@@ -1,4 +1,4 @@
-# Copilot Instructions for `pycut` (TypeScript)
+# Copilot Instructions for `opencut` (TypeScript)
 
 ## Commands
 

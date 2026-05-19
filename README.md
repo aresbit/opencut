@@ -1,8 +1,8 @@
-# pycut
+# opencut
 
 > AI-powered video clipping CLI, written in TypeScript and runnable as a single spawn-friendly `dist/cli.js`.
 
-`pycut` transcribes long-form video or audio, extracts highlight-worthy moments via an OpenAI-compatible LLM, and exports subtitles, timelines, or burned-in videos from a single CLI.
+`opencut` transcribes long-form video or audio, extracts highlight-worthy moments via an OpenAI-compatible LLM, and exports subtitles, timelines, or burned-in videos from a single CLI.
 
 ## Features
 
@@ -41,7 +41,7 @@ bun add smart-whisper
 bun add @ricky0123/vad-node onnxruntime-node
 ```
 
-Download a whisper.cpp model file from the [ggerganov/whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and either pass `--asr-model /path/to/ggml-…bin` or export `PYCUT_WHISPER_MODEL=/path/to/ggml-…bin`.
+Download a whisper.cpp model file from the [ggerganov/whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and either pass `--asr-model /path/to/ggml-…bin` or export `PYCUT_WHISPER_MODEL=/path/to/ggml-…bin` (the `PYCUT_` env-var prefix is kept for backwards compatibility).
 
 ## Configure an API key
 
