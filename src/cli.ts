@@ -97,11 +97,13 @@ async function getVideoDimensions(videoPath: string): Promise<{ width: number; h
 }
 
 function buildAsrBackend(modelPath: string | undefined, sourceLang: string): AsrBackend {
-  const resolved = modelPath ?? process.env.PYCUT_WHISPER_MODEL ?? "";
+  const envModel = process.env.OPENCUT_WHISPER_MODEL ?? process.env.PYCUT_WHISPER_MODEL;
+  const resolved = modelPath ?? envModel ?? "";
   if (!resolved) {
     throw new Error(
       "ASR model path is required. Pass --asr-model /path/to/ggml-model.bin " +
-        "or set PYCUT_WHISPER_MODEL. Download GGML weights from https://huggingface.co/ggerganov/whisper.cpp",
+        "or set OPENCUT_WHISPER_MODEL (PYCUT_WHISPER_MODEL still works for legacy setups). " +
+        "Download GGML weights from https://huggingface.co/ggerganov/whisper.cpp",
     );
   }
   return createWhisperBackend({ modelPath: resolved, language: sourceLang });
@@ -118,7 +120,7 @@ function buildTranslator(): TranslationBackend extends never ? never : GoogleTra
 export function buildProgram(): Command {
   const program = new Command();
   program
-    .name("pycut")
+    .name("opencut")
     .description(
       "AI-powered video clipping CLI.\n\n" +
         "Set OPENAI_API_KEY or pass --api-key to enable highlight extraction.\n" +
@@ -130,7 +132,7 @@ export function buildProgram(): Command {
     .option("-o, --output-dir <dir>", "Output directory (default: sibling folder named after each input)")
     .option(
       "--asr-model <path>",
-      "Path to a whisper.cpp GGML model file (or set PYCUT_WHISPER_MODEL)",
+      "Path to a whisper.cpp GGML model file (or set OPENCUT_WHISPER_MODEL; PYCUT_WHISPER_MODEL is honored for backwards compatibility)",
     )
     .option("--api-key <key>", "OpenAI-compatible API key (or set OPENAI_API_KEY)")
     .option("--base-url <url>", "Base URL for OpenAI-compatible API")

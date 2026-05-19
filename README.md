@@ -41,7 +41,7 @@ bun add smart-whisper
 bun add @ricky0123/vad-node onnxruntime-node
 ```
 
-Download a whisper.cpp model file from the [ggerganov/whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and either pass `--asr-model /path/to/ggml-…bin` or export `PYCUT_WHISPER_MODEL=/path/to/ggml-…bin` (the `PYCUT_` env-var prefix is kept for backwards compatibility).
+Download a whisper.cpp model file from the [ggerganov/whisper.cpp releases](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and either pass `--asr-model /path/to/ggml-…bin` or export `OPENCUT_WHISPER_MODEL=/path/to/ggml-…bin` (the legacy `PYCUT_WHISPER_MODEL` is still honored for older setups).
 
 ## Configure an API key
 

@@ -5,7 +5,7 @@ import { VERSION } from "./index.ts";
 describe("cli", () => {
   it("registers the program name and version", () => {
     const program = buildProgram();
-    expect(program.name()).toBe("pycut");
+    expect(program.name()).toBe("opencut");
     expect(program.version()).toBe(VERSION);
   });
 

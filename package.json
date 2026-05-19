@@ -1,10 +1,10 @@
 {
-  "name": "pycut",
+  "name": "opencut",
   "version": "0.2.0-ts.0",
   "description": "AI-powered video clipping CLI. Transcribes media, extracts highlights via LLM, exports subtitles/timelines/burned-in video.",
   "type": "module",
   "bin": {
-    "pycut": "./dist/cli.js"
+    "opencut": "./dist/cli.js"
   },
   "exports": {
     ".": "./dist/index.js"
